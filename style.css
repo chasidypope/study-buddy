@@ -55,3 +55,13 @@ body.dark {--bg:#201d2b;--surface:#302b3d;--ink:#f6ecff;--muted:#bcaec8;--line:#
 .signout-btn{background:#fff3f9;color:#c4799a;border:1px solid #f3d4e3;border-radius:11px;padding:9px 12px;cursor:pointer;font-size:11px;font-weight:900}
 .sync-note{font-size:11px;color:#a188b2}.dark .signout-btn{background:#513c4e;border-color:#775873;color:#ffd4e8}
 @media(max-width:680px){.auth-card{padding:22px}.account-email{display:none}.sync-note{font-size:9px}}
+/* Guest button blends into existing cute, pastel login screen. */
+.guest-entry{margin:14px 0 2px}
+.guest-divider{display:flex;align-items:center;gap:12px;color:#b7a1c2;font-size:11px;font-weight:900;margin-bottom:14px}
+.guest-divider:before,.guest-divider:after{content:"";flex:1;height:1px;background:#efdff0}
+.guest-divider span{white-space:nowrap}
+.guest-btn{width:100%;display:block;padding:13px 16px;border-radius:13px;background:linear-gradient(115deg,#fff0fa,#f0e6ff);border:1px solid #dfcbed;color:#a76bb2;font-weight:900;font-size:14px;box-shadow:0 6px 15px #bb9ccc2b;transition:transform .15s,filter .15s}
+.guest-btn:hover{transform:translateY(-1px);filter:brightness(.99)}
+.guest-disclaimer{font-size:11px;line-height:1.5;color:#a591b0;margin:10px 0 0}
+body.dark .sync-note{color:#e4badb}
+

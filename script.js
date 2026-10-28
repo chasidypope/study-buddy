@@ -1,7 +1,7 @@
 /* Study Buddy ♡ — Supabase-backed personal accounts and synced assignments. */
 'use strict';
 
-const STORAGE = { tasks: 'study-buddy-tasks-v1', theme: 'study-buddy-theme-v1', sessions: 'study-buddy-sessions-v1' };
+const STORAGE = { tasks: 'study-buddy-tasks-v1', guestTasks: 'study-buddy-guest-tasks-v1', guestActive: 'study-buddy-guest-active-v1', theme: 'study-buddy-theme-v1', sessions: 'study-buddy-sessions-v1' };
 const $ = (id) => document.getElementById(id);
 const safeArray = (value) => Array.isArray(value) ? value : [];
 const pad = (n) => String(n).padStart(2, '0');
@@ -25,6 +25,7 @@ let activeView = 'dashboard';
 let toastTimeout;
 let sessionCount = 0;
 let currentUser = null;
+let guestMode = false;
 let client = null;
 let authMode = 'login';
 let loadingAccount = 0;
@@ -35,6 +36,53 @@ const mapTask = row => ({
   priority: row.priority, completed: row.completed, created: new Date(row.created_at).getTime()
 });
 const sessionKey = userId => `${STORAGE.sessions}:${userId}`;
+function readGuestTasks() {
+  try {
+    return safeArray(JSON.parse(localStorage.getItem(STORAGE.guestTasks) || '[]'))
+      .filter(item => item && typeof item.id === 'string' && typeof item.title === 'string' &&
+        typeof item.course === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(item.due))
+      .map(item => ({ id: item.id, title: item.title, course: item.course, due: item.due,
+        priority: ['Low','Medium','High'].includes(item.priority) ? item.priority : 'Medium',
+        completed: !!item.completed, created: Number(item.created) || Date.now() }));
+  } catch { return []; }
+}
+function saveGuestTasks() {
+  try {
+    localStorage.setItem(STORAGE.guestTasks, JSON.stringify(tasks));
+    syncLabel('♡ Guest mode · saved on this device only');
+    return true;
+  } catch {
+    syncLabel('⚠ Guest changes could not be saved');
+    toast('Could not save in this browser. Check your storage settings.');
+    return false;
+  }
+}
+function enterGuestMode() {
+  guestMode = true;
+  currentUser = null;
+  localStorage.setItem(STORAGE.guestActive, '1');
+  tasks = readGuestTasks();
+  sessionCount = Number(localStorage.getItem(sessionKey('guest')) || 0) || 0;
+  $('accountEmail').textContent = '♡ Guest';
+  $('signOutBtn').textContent = 'Sign in / Sign up';
+  $('authScreen').hidden = true;
+  $('appShell').hidden = false;
+  clearForm();
+  syncLabel('♡ Guest mode · saved on this device only');
+  renderEverything();
+  renderTimer();
+}
+function showSignInScreen() {
+  guestMode = false;
+  localStorage.removeItem(STORAGE.guestActive);
+  tasks = [];
+  currentUser = null;
+  pauseTimer();
+  $('appShell').hidden = true;
+  $('authScreen').hidden = false;
+  selectAuthMode('login');
+  showAuthMessage('Your guest assignments are still saved in this browser, and won’t sync automatically.');
+}
 function syncLabel(message) { $('syncStatus').textContent = message; }
 function showAuthMessage(message, isError = false) {
   $('authMessage').textContent = message;
@@ -61,6 +109,10 @@ async function loadAssignments() {
 async function handleSession(session) {
   const user = session?.user || null;
   if (!user) {
+    if (guestMode || localStorage.getItem(STORAGE.guestActive) === '1') {
+      enterGuestMode();
+      return;
+    }
     currentUser = null;
     tasks = [];
     $('appShell').hidden = true;
@@ -68,9 +120,12 @@ async function handleSession(session) {
     showAuthMessage('');
     return;
   }
-  if (currentUser?.id === user.id) return;
+  if (currentUser?.id === user.id && !guestMode) return;
   const generation = ++loadingAccount;
+  guestMode = false;
+  localStorage.removeItem(STORAGE.guestActive);
   currentUser = user;
+  $('signOutBtn').textContent = 'Log out';
   $('accountEmail').textContent = user.email || 'Signed in';
   sessionCount = Number(localStorage.getItem(sessionKey(user.id)) || 0) || 0;
   renderTimer();
@@ -96,6 +151,7 @@ function selectAuthMode(mode) {
 }
 $('loginTab').addEventListener('click', () => selectAuthMode('login'));
 $('signupTab').addEventListener('click', () => selectAuthMode('signup'));
+$('guestBtn').addEventListener('click', enterGuestMode);
 $('authForm').addEventListener('submit', async event => {
   event.preventDefault();
   if (!client || busy) return;
@@ -143,6 +199,7 @@ $('newPasswordForm').addEventListener('submit', async event => {
   await handleSession(data.session);
 });
 $('signOutBtn').addEventListener('click', async () => {
+  if (guestMode) { showSignInScreen(); return; }
   if (!client) return;
   const { error } = await client.auth.signOut();
   if (error) toast(cleanError(error));
@@ -154,7 +211,8 @@ async function initializeAuth() {
   if (!url.startsWith('https://') || !key.startsWith('sb_publishable_') || !window.supabase?.createClient) {
     $('setupWarning').hidden = false;
     $('authSubmit').disabled = true;
-    showAuthMessage('Accounts need to be configured before sign-in will work.', true);
+    showAuthMessage('Accounts need to be configured before sign-in will work. Guest mode is still available.', true);
+    if (localStorage.getItem(STORAGE.guestActive) === '1') enterGuestMode();
     return;
   }
   try {
@@ -227,8 +285,15 @@ function taskRow(task) {
     <div class="task-body"><span class="task-title">${escapeHTML(task.title)}</span><div class="task-meta"><span class="subject-tag">${escapeHTML(task.course)}</span><span class="task-date ${dueClass}">◷ ${escapeHTML(dueText(task))}</span><span class="priority-tag priority-${escapeHTML(task.priority.toLowerCase())}">${escapeHTML(task.priority)}</span></div></div>
     <div class="task-menu"><button type="button" class="edit" title="Edit assignment" aria-label="Edit ${escapeHTML(task.title)}">✎</button><button type="button" class="delete" title="Delete assignment" aria-label="Delete ${escapeHTML(task.title)}">×</button></div>`;
   row.querySelector('.task-check').addEventListener('change', async (event) => {
-    if (!client || !currentUser) return;
     const checked = event.target.checked;
+    if (guestMode) {
+      tasks = tasks.map(t => t.id === task.id ? { ...t, completed: checked } : t);
+      saveGuestTasks();
+      renderEverything();
+      toast(checked ? 'Nice work! Assignment completed ♡' : 'Assignment moved back to your list');
+      return;
+    }
+    if (!client || !currentUser) return;
     const { data, error } = await client.from('assignments').update({ completed: checked })
       .eq('id', task.id).eq('user_id', currentUser.id)
       .select('id,title,course,due_date,priority,completed,created_at').single();
@@ -283,7 +348,15 @@ function editTask(id) {
 }
 async function removeTask(id) {
   const task = tasks.find(task => task.id === id);
-  if (!task || !currentUser || !window.confirm(`Delete "${task.title}"?`)) return;
+  if (!task || !window.confirm(`Delete "${task.title}"?`)) return;
+  if (guestMode) {
+    tasks = tasks.filter(item => item.id !== id);
+    saveGuestTasks();
+    if ($('editingId').value === id) clearForm();
+    renderEverything(); toast('Assignment deleted');
+    return;
+  }
+  if (!client || !currentUser) return;
   const { error } = await client.from('assignments').delete().eq('id', id).eq('user_id', currentUser.id);
   if (error) { toast(cleanError(error)); return; }
   tasks = tasks.filter(item => item.id !== id);
@@ -292,7 +365,7 @@ async function removeTask(id) {
 }
 $('assignmentForm').addEventListener('submit', async event => {
   event.preventDefault();
-  if (!currentUser || !client || busy) return;
+  if ((!guestMode && (!currentUser || !client)) || busy) return;
   const title = $('taskTitle').value.trim();
   const course = $('taskCourse').value.trim();
   const due = $('taskDue').value; const priority = $('taskPriority').value;
@@ -301,8 +374,19 @@ $('assignmentForm').addEventListener('submit', async event => {
   }
   setBusy(true);
   try {
-    const values = { title, course, due_date: due, priority };
     const editId = $('editingId').value;
+    if (guestMode) {
+      if (editId) {
+        tasks = tasks.map(t => t.id === editId ? { ...t, title, course, due, priority } : t);
+      } else {
+        tasks.push({ id: uid(), title, course, due, priority, completed: false, created: Date.now() });
+      }
+      saveGuestTasks();
+      clearForm(); renderEverything();
+      toast(editId ? 'Assignment updated ♡' : 'Assignment added! You got this ✿');
+      return;
+    }
+    const values = { title, course, due_date: due, priority };
     let result;
     if (editId) {
       result = await client.from('assignments').update(values)
@@ -361,7 +445,7 @@ function timerTick() {
   secondsRemaining = Math.max(0, Math.ceil((timerDeadline - Date.now()) / 1000)); renderTimer();
   if (secondsRemaining <= 0) {
     clearInterval(timerInterval); timerInterval = null;
-    if (timerMode === 'work') { sessionCount++; localStorage.setItem(sessionKey(currentUser.id), String(sessionCount)); $('timerMessage').textContent = 'You did it! Take a little break ♡'; }
+    if (timerMode === 'work') { sessionCount++; localStorage.setItem(sessionKey(guestMode ? 'guest' : currentUser.id), String(sessionCount)); $('timerMessage').textContent = 'You did it! Take a little break ♡'; }
     else $('timerMessage').textContent = 'Break over! Ready for another round? ✿';
     secondsRemaining = duration(timerMode); renderTimer(); toast('Timer finished! ✨');
   }
