@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f8ecff">
+  <meta name="description" content="Study Buddy — your cute little planner for assignments, deadlines, and focus sessions.">
+  <title>Study Buddy ♡ Student Planner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Nunito:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
+  <script src="config.js" defer></script>
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <div id="authScreen" class="auth-screen" aria-label="Account access">
+    <section class="auth-card">
+      <img src="images/cat-laptop.jpg" alt="Cute cat with a pink laptop" class="auth-cat">
+      <div class="auth-eyebrow">✦ your happy study space ✦</div>
+      <h1>Welcome to <span>Study Buddy ♡</span></h1>
+      <p class="auth-subtitle">Your own little corner to plan, focus, and bloom.</p>
+      <div id="setupWarning" class="auth-alert" hidden>To enable accounts: add your Supabase Project URL and publishable key to <code>config.js</code>, then run <code>database.sql</code> in your Supabase SQL Editor. See README.md.</div>
+      <div class="auth-tabs" role="group" aria-label="Account action">
+        <button id="loginTab" class="auth-tab is-selected" type="button">Log in</button>
+        <button id="signupTab" class="auth-tab" type="button">Sign up</button>
+      </div>
+      <form id="authForm" autocomplete="on">
+        <label for="authEmail">Email address</label>
+        <input id="authEmail" type="email" placeholder="you@example.com" autocomplete="email" required>
+        <label for="authPassword">Password</label>
+        <input id="authPassword" type="password" placeholder="At least 8 characters" autocomplete="current-password" minlength="8" required>
+        <button id="authSubmit" class="primary-btn auth-submit" type="submit">Log in ♡</button>
+      </form>
+      <button id="forgotPassword" class="auth-text-button" type="button">Forgot password?</button>
+      <form id="newPasswordForm" hidden>
+        <label for="newPassword">Choose a new password</label>
+        <input id="newPassword" type="password" minlength="8" autocomplete="new-password" required placeholder="At least 8 characters">
+        <button class="primary-btn auth-submit" type="submit">Update password ♡</button>
+      </form>
+      <p id="authMessage" class="auth-message" role="status" aria-live="polite"></p>
+      <p class="auth-footnote">Secure accounts powered by Supabase ✿</p>
+    </section>
+  </div>
+  <div class="app-shell" id="appShell" hidden>
+    <aside class="sidebar" aria-label="Main navigation">
+      <a href="#dashboard" class="brand" data-nav="dashboard" aria-label="Study Buddy dashboard">
+        <div class="brand-cat-card"><img src="images/cat-laptop.jpg" alt="Cute fluffy white cat using a pink laptop"></div>
+        <span class="brand-name">study buddy<span>♡</span></span>
+        <span class="brand-label">your happy study space</span>
+      </a>
+      <p class="menu-title">YOUR SPACE</p>
+      <nav class="nav-links" aria-label="Sections">
+        <button class="nav-link is-active" type="button" data-view="dashboard"><span aria-hidden="true">⌂</span> Overview</button>
+        <button class="nav-link" type="button" data-view="assignments"><span aria-hidden="true">☑</span> Assignments</button>
+        <button class="nav-link" type="button" data-view="calendar"><span aria-hidden="true">▦</span> Calendar</button>
+        <button class="nav-link" type="button" data-view="focus"><span aria-hidden="true">◷</span> Focus Timer</button>
+        <button class="nav-link" type="button" data-view="about"><span aria-hidden="true">♡</span> About</button>
+      </nav>
+      <div class="sidebar-grow"></div>
+      <div class="side-note"><div class="side-note-doodle" aria-hidden="true">✿ ✦ ♡</div><strong>one step at a time!</strong><span>you're doing better than you think.</span><span class="tiny-hearts">♥ ♥ ♥</span></div>
+      <div class="side-footer">made with love + a little caffeine ☕</div>
+    </aside>
+    <main class="main-area">
+      <div class="top-row"><div class="breadcrumb"><span class="status-dot"></span> YOUR COZY CORNER OF PRODUCTIVITY ✨</div><div class="top-actions"><span id="todayLabel" class="today-label"></span><span class="account-email" id="accountEmail"></span><button class="signout-btn" type="button" id="signOutBtn">Log out</button><button class="theme-btn" type="button" id="themeToggle" aria-label="Switch to dark mode"><span id="themeGlyph" aria-hidden="true">☾</span> <span id="themeName">Dark mode</span></button></div></div>
+      <section class="hero" aria-labelledby="heroHeading">
+        <div class="hero-copy"><div class="eyebrow">✧ hey, study superstar! ✧</div><h1 id="heroHeading">Let's make today <span>lovely!</span> <span aria-hidden="true">♡</span></h1><p>Big dreams start with little steps. Plan your day, find your focus, and celebrate every win!</p><button id="heroAdd" type="button" class="primary-btn">＋ Add assignment</button></div>
+        <div class="hero-cat"><img src="images/cat-peek.jpg" alt="Small fluffy cat peeking out to cheer you on"><div class="speech-bubble">you got this! ✿</div></div>
+        <span class="hero-star star-a" aria-hidden="true">✦</span><span class="hero-star star-b" aria-hidden="true">♥</span><span class="hero-star star-c" aria-hidden="true">✧</span>
+      </section>
+      <div class="section-top"><div class="section-top-left"><span class="little-sun">✿</span> <span id="sectionName">Your dashboard</span><span class="top-sparkle">✧</span></div><span class="sync-note" id="syncStatus" aria-live="polite">☁ Saved securely to your account</span></div>
+      <section class="stats" id="stats" aria-label="Assignment summary">
+        <div class="stat stat-lilac"><span class="stat-glyph">▤</span><div class="stat-info"><span>All tasks</span><strong id="totalTasks">0</strong></div><span class="stat-sparkle">✧</span></div>
+        <div class="stat stat-pink"><span class="stat-glyph">◷</span><div class="stat-info"><span>Due today</span><strong id="todayTasks">0</strong></div><span class="stat-sparkle">♡</span></div>
+        <div class="stat stat-blue"><span class="stat-glyph">☁</span><div class="stat-info"><span>Due this week</span><strong id="weekTasks">0</strong></div><span class="stat-sparkle">✦</span></div>
+        <div class="stat stat-mint"><span class="stat-glyph">✓</span><div class="stat-info"><span>Completed</span><strong id="completedTasks">0</strong></div><span class="stat-sparkle">✿</span></div>
+      </section>
+      <section class="view is-visible" id="dashboardView" aria-label="Dashboard overview">
+        <div class="dashboard-grid">
+          <section class="panel task-panel" aria-labelledby="upcomingTitle">
+            <div class="panel-head"><div><h2 id="upcomingTitle">Coming up <span>✎</span></h2><p>Let's tackle your to-do list, one thing at a time!</p></div><button type="button" class="text-btn" data-goto="assignments">View all →</button></div>
+            <div id="upcomingTasks" class="task-list"></div>
+          </section>
+          <div class="right-stack">
+            <section class="panel quick-add" id="quickAddPanel" aria-labelledby="quickAddHeading"><div class="panel-head"><div><h2 id="quickAddHeading">New assignment <span>♡</span></h2><p>Get it out of your head and onto your list.</p></div></div>
+              <form id="assignmentForm">
+                <input type="hidden" id="editingId" value="">
+                <label for="taskTitle">What do you need to do? <span class="req">*</span></label>
+                <input id="taskTitle" type="text" maxlength="100" required placeholder="e.g. Finish my Java homework">
+                <div class="form-grid"><div><label for="taskCourse">Subject / class <span class="req">*</span></label><input id="taskCourse" type="text" maxlength="45" required placeholder="e.g. Computer Science"></div><div><label for="taskDue">Due date <span class="req">*</span></label><input id="taskDue" type="date" required></div></div>
+                <label for="taskPriority">Priority</label><select id="taskPriority"><option value="Low">🌿 Low priority</option><option value="Medium" selected>☁ Medium priority</option><option value="High">💗 High priority</option></select>
+                <div class="form-actions"><button type="submit" class="primary-btn wide" id="saveTaskBtn">✦ Add to my planner</button><button type="button" id="cancelEdit" class="ghost-btn" hidden>Cancel edit</button></div>
+              </form>
+            </section>
+            <section class="panel mini-focus" aria-label="Focus timer"><div class="focus-label">☕ TIME TO FOCUS</div><div class="focus-inline"><div><strong id="smallTimer">25:00</strong><span>just you and your goals ♡</span></div><button class="round-arrow" type="button" data-goto="focus" aria-label="Open focus timer">→</button></div></section>
+          </div>
+        </div>
+        <div class="quote-card"><span>✿</span><div><strong>Little progress is still progress.</strong><p>You're allowed to grow at your own pace, okay? ♡</p></div><span class="quote-flower">✧ ♡ ✧</span></div>
+      </section>
+      <section class="view" id="assignmentsView" aria-label="All assignments" hidden>
+        <div class="panel"><div class="panel-head"><div><h2>All assignments <span>♡</span></h2><p>Your complete list, neatly organized.</p></div><button class="secondary-btn" type="button" id="assignmentsAdd">＋ New assignment</button></div>
+          <div class="filter-bar"><label class="search-box"><span aria-hidden="true">⌕</span><span class="sr-only">Search assignments</span><input type="search" id="taskSearch" placeholder="Search by task or subject..."></label><label class="filter-select"><span class="sr-only">Filter assignment status</span><select id="statusFilter"><option value="all">All statuses</option><option value="active">To do</option><option value="completed">Completed</option></select></label><label class="filter-select"><span class="sr-only">Sort assignments</span><select id="sortOrder"><option value="due">Soonest due</option><option value="priority">Highest priority</option><option value="recent">Recently added</option></select></label></div>
+          <div id="allTasks" class="task-list full-list"></div>
+        </div>
+      </section>
+      <section class="view" id="calendarView" aria-label="Calendar" hidden>
+        <div class="panel calendar-panel"><div class="panel-head"><div><h2>Your calendar <span>✿</span></h2><p>See what you've got coming up.</p></div><div class="month-controls"><button id="prevMonth" type="button" aria-label="Previous month">‹</button><strong id="monthLabel"></strong><button id="nextMonth" type="button" aria-label="Next month">›</button></div></div>
+          <div class="calendar-weekdays" aria-hidden="true"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div><div class="calendar-grid" id="calendarGrid"></div>
+          <div class="calendar-details"><h3 id="selectedDayLabel">Selected day</h3><div id="dayTasks" class="task-list"></div></div>
+        </div>
+      </section>
+      <section class="view" id="focusView" aria-label="Focus timer" hidden>
+        <div class="focus-layout"><div class="panel main-timer"><span class="focus-label">✧ YOUR LITTLE FOCUS SPACE ✧</span><h2>Focus time! <span>♡</span></h2><p>Put the world on pause and do your best.</p><div class="mode-buttons"><button type="button" class="mode-btn active" data-mode="work">Study · 25 min</button><button type="button" class="mode-btn" data-mode="break">Break · 5 min</button></div><div class="timer-display" id="timerDisplay" role="timer" aria-live="off">25:00</div><div class="timer-controls"><button id="timerStart" type="button" class="primary-btn">▶ Start focus</button><button id="timerReset" type="button" class="secondary-btn">↺ Reset</button></div><p id="timerMessage" class="timer-message" aria-live="polite">A little focus goes a long way. ✿</p></div><div class="panel timer-companion"><img src="images/cat-laptop.jpg" alt="Your study cat working on a laptop"><h3>Your study buddy is here!</h3><p>Try 25 minutes of focusing, then take a 5-minute break. Give yourself credit for showing up. ♡</p><div class="completed-focus">✦ Focus sessions finished: <strong id="sessionCount">0</strong></div></div></div>
+      </section>
+      <section class="view" id="aboutView" aria-label="About Study Buddy" hidden><div class="panel about-panel"><span class="eyebrow">✧ CREATED WITH CARE ✧</span><h2>What is Study Buddy? <span>♡</span></h2><p>Study Buddy is a cozy student planner built with HTML, CSS, and vanilla JavaScript. It helps you organize assignments, explore deadlines on a calendar, and study with a simple focus timer.</p><p>Assignments, theme preferences, and completed focus-session counts are saved in <strong>this browser's local storage</strong>. Your tasks don't sync across devices, and this isn't a shared service or a notification app.</p><div class="tech-tags"><span>HTML5</span><span>CSS3</span><span>JavaScript</span><span>localStorage</span><span>Responsive design</span></div><p class="fine-print">The two cat images were supplied for this project. Confirm you have the right to publish them publicly.</p></div></section>
+      <footer class="app-footer">made for the little wins ♡ <span>Study Buddy · personal study planner</span></footer>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
